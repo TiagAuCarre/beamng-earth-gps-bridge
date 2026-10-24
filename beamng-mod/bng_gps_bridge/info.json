@@ -1,6 +1,6 @@
 {
   "name": "BeamNG.earth GPS Bridge",
-  "author": "Meira",
+  "author": "Tiago Meira",
   "version": "1.0.0",
   "description": "Relais local des coordonnées GPS fournies par BeamNG.earth vers le connecteur Windows."
 }

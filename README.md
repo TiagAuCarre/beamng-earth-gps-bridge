@@ -4,7 +4,7 @@
 
 ### La position de BeamNG.earth transmise à ton téléphone Android
 
-Projet personnel de **Meira** · Windows · Kotlin · Lua · Bluetooth Classic
+Projet personnel de **Tiago Meira** · Windows · Kotlin · Lua · Bluetooth Classic
 
 [![Licence MIT](https://img.shields.io/badge/Licence-MIT-2ea44f.svg)](LICENSE)
 [![Windows](https://img.shields.io/badge/PC-Windows-0078D4.svg)](#prérequis)
@@ -35,6 +35,10 @@ Le pont utilise les coordonnées WGS84 calculées par BeamNG.earth. Son mod Lua 
 - Messages JSON Lines versionnés, validés et limités en taille.
 - Mode d’essai avec coordonnées fictives pour tester la liaison indépendamment du jeu.
 - Fonctionnement local après installation : aucun compte, serveur cloud ou télémétrie.
+
+## Télécharger l’application Android
+
+[**Télécharger l’APK de débogage**](app-debug.apk) — version 1.0.0, compilée depuis ce projet. Sur le téléphone, ouvre le fichier téléchargé pour l’installer, puis sélectionne l’application comme **application de localisation fictive** dans les options pour les développeurs Android. Cette APK est une version de test ; Android peut demander de confirmer l’installation d’une application téléchargée.
 
 ## Installation rapide
 
@@ -112,7 +116,7 @@ py -m py_compile connector.py protocol.py bluetooth_win.py
 
 ## Projet et licence
 
-Ce dépôt est développé et maintenu personnellement par **Meira**. C’est un projet indépendant, sans affiliation ni approbation de BeamNG GmbH ou des mainteneurs de BeamNG.earth. Le code source de BeamNG.earth n’est pas redistribué ici.
+Ce dépôt est développé et maintenu personnellement par **Tiago Meira**. C’est un projet indépendant, sans affiliation ni approbation de BeamNG GmbH ou des mainteneurs de BeamNG.earth. Le code source de BeamNG.earth n’est pas redistribué ici.
 
 Le projet cartographique d’origine est [BeamNG.Earth par TecnaGamer](https://github.com/TecnaGamer/BeamNG.Earth). Voir aussi [la page de ses contributeurs](https://github.com/TecnaGamer/BeamNG.Earth/graphs/contributors?from=18%2F07%2F2026).
 
