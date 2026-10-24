@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BeamNG Earth GPS Bridge position v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "type", "source", "stream_id", "seq", "timestamp_utc_ms", "latitude", "longitude", "altitude_m", "speed_mps", "heading_deg", "test"],
+  "properties": {
+    "version": {"const": 1}, "type": {"const": "position"},
+    "source": {"enum": ["beamng-earth", "test"]},
+    "stream_id": {"type": "string", "minLength": 1, "maxLength": 64},
+    "seq": {"type": "integer", "minimum": 0},
+    "timestamp_utc_ms": {"type": "integer", "minimum": 1},
+    "latitude": {"type": "number", "minimum": -90, "maximum": 90},
+    "longitude": {"type": "number", "minimum": -180, "maximum": 180},
+    "altitude_m": {"type": ["number", "null"]},
+    "speed_mps": {"type": "number", "minimum": 0, "maximum": 150},
+    "heading_deg": {"type": ["number", "null"], "minimum": 0, "maximum": 360},
+    "test": {"type": "boolean"}
+  }
+}
