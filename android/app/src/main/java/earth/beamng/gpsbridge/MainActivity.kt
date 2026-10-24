@@ -8,10 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.provider.Settings
-import android.view.ViewGroup
 import android.view.View
 import android.widget.*
 import android.widget.AdapterView
@@ -19,7 +16,6 @@ import android.widget.AdapterView
 class MainActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var position: TextView
-    private lateinit var logView: TextView
     private lateinit var injectionToggle: CheckBox
     private var inject = false
     private var reconnectDelay = 1500L
@@ -64,17 +60,12 @@ class MainActivity : Activity() {
         root.addView(injectionToggle)
         root.addView(Button(this).apply { text = "Options pour les développeurs"; setOnClickListener { startActivity(Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)) } })
         root.addView(label("À configurer manuellement : Options pour les développeurs → Application de localisation fictive → BeamNG GPS Bridge.", 13f))
-        root.addView(Button(this).apply { text = "Effacer le journal local"; setOnClickListener { BridgeService.clearLog(); Toast.makeText(this@MainActivity, "Journal effacé", Toast.LENGTH_SHORT).show() } })
-        root.addView(Button(this).apply { text = "Copier le rapport diagnostic"; setOnClickListener { copyReport() } })
-        root.addView(label("Journal", 18f))
-        logView = TextView(this).apply { textSize = 12f; setTextColor(0xffb5c1cd.toInt()); text = BridgeService.logText() }
-        val scroll = ScrollView(this).apply { addView(logView); layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f) }; root.addView(scroll)
+        root.addView(label("Confidentialité : aucune position ni historique d’événements n’est enregistré par l’application.", 13f))
         setContentView(root)
         Handler(Looper.getMainLooper()).post(object : Runnable { override fun run() {
             status.text = "${BridgeService.connectionState} • ${if (inject) "injection demandée" else "réception seule"}"
             val age = if (BridgeService.lastPositionWallMs == 0L) null else (System.currentTimeMillis() - BridgeService.lastPositionWallMs).coerceAtLeast(0)
             position.text = "Dernière position : ${BridgeService.latestPositionText}\nÂge du message : ${age?.let { "$it ms" } ?: "—"}"
-            logView.text = BridgeService.logText()
             window.decorView.postDelayed(this, 1000)
         } })
     }
@@ -104,22 +95,4 @@ class MainActivity : Activity() {
 
     private fun updateStatus() { status.text = if (inject) "Injection demandée • elle ne sera active qu'après réception valide et activation du fournisseur fictif" else "Injection suspendue" }
 
-    private fun copyReport() {
-        val permissions = required.joinToString("\n") { "$it : ${if (checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED) "accordée" else "refusée"}" }
-        val report = """BeamNG GPS Bridge — diagnostic
-Fabricant/modèle : ${Build.MANUFACTURER} ${Build.MODEL}
-Android : ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})
-One UI : non détectée
-Connexion : ${BridgeService.connectionState}
-Injection activée dans l'application : $inject
-Reconnexion Bluetooth : délai ${reconnectDelay} ms
-Position reçue : ${if (BridgeService.lastPositionWallMs > 0) "oui (coordonnées omises du rapport), âge ${System.currentTimeMillis() - BridgeService.lastPositionWallMs} ms" else "non"}
-Permissions :
-$permissions
-Événements récents :
-${BridgeService.logText()}
-""".trimIndent()
-        (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("Rapport BeamNG GPS Bridge", report))
-        Toast.makeText(this, "Rapport copié (sans coordonnées ni identifiants Bluetooth)", Toast.LENGTH_SHORT).show()
-    }
 }

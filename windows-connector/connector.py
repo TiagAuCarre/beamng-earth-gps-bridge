@@ -18,7 +18,9 @@ class Connector:
     def __init__(self, ui):
         self.ui = ui
         self.stop = threading.Event()
-        self.outgoing = queue.Queue(maxsize=128)
+        # Keep only the newest location. A slow/disconnected phone must not receive a burst of stale points.
+        self.outgoing = queue.Queue(maxsize=1)
+        self.outgoing_lock = threading.Lock()
         self.sock = None
         self.target_address = None
         self.connection_enabled = threading.Event()
@@ -67,8 +69,11 @@ class Connector:
                     try:
                         obj = validate_line(bytes(line), now_ms=int(time.time() * 1000))
                         if obj["source"] == "test": self.fail("test coordinates are disabled unless sent by the dedicated test control")
-                        try: self.outgoing.put_nowait(bytes(line) + b"\n")
-                        except queue.Full: self.fail("Bluetooth queue full; dropping position")
+                        with self.outgoing_lock:
+                            try: self.outgoing.get_nowait()
+                            except queue.Empty: pass
+                            try: self.outgoing.put_nowait(bytes(line) + b"\n")
+                            except queue.Full: pass
                         self.received += 1; self.last_message = f"seq {obj['seq']} {obj['latitude']:.6f}, {obj['longitude']:.6f}"
                         self.arrivals.append((time.monotonic(), obj["timestamp_utc_ms"]))
                         rate = (len(self.arrivals) - 1) / max(.001, self.arrivals[-1][0] - self.arrivals[0][0]) if len(self.arrivals) > 1 else 0
@@ -111,6 +116,10 @@ class Connector:
                 while not self.stop.is_set() and self.connection_enabled.is_set() and self.sock is candidate:
                     try: packet = self.outgoing.get(timeout=.5)
                     except queue.Empty: continue
+                    try:
+                        validate_line(packet, now_ms=int(time.time() * 1000), max_age_ms=2000)
+                    except ValueError:
+                        continue
                     candidate.sendall(packet)
             except Exception as exc:
                 if not self.stop.is_set() and self.connection_enabled.is_set():

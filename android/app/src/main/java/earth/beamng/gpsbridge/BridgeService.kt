@@ -39,7 +39,7 @@ class BridgeService : Service() {
         if (intent?.action == "STOP") { stopSelf(); return START_NOT_STICKY }
         enabled = intent?.getBooleanExtra("inject", enabled) ?: enabled
         promoteForeground()
-        if (!running) { running = true; append("Service démarré; publication du service RFCOMM SPP"); thread(name = "rfcomm-server") { phoneServerLoop() }; staleWatcher = thread(name = "stale-watch") { staleLoop() } }
+        if (!running) { running = true; updateConnectionState("Service démarré"); thread(name = "rfcomm-server") { phoneServerLoop() }; staleWatcher = thread(name = "stale-watch") { staleLoop() } }
         return START_STICKY
     }
 
@@ -61,12 +61,12 @@ class BridgeService : Service() {
                 if (adapter == null || !adapter.isEnabled) throw IllegalStateException("Bluetooth désactivé ou indisponible")
                 listener = adapter.listenUsingRfcommWithServiceRecord("BeamNG GPS Bridge", UUID.fromString(SPP_UUID))
                 serverSocket = listener
-                append("Service SPP prêt; en attente du connecteur Windows")
+                updateConnectionState("Service SPP prêt")
                 socket = listener.accept()
-                peer = socket; append("Connecteur Windows connecté")
+                peer = socket; updateConnectionState("Connecteur Windows connecté"); updateNotification("Connecteur Windows connecté")
                 readPositions(socket)
             } catch (e: Exception) {
-                if (running) append("Erreur RFCOMM : ${e.message ?: e.javaClass.simpleName}")
+                if (running) updateConnectionState("Erreur RFCOMM")
             } finally {
                 try { socket?.close() } catch (_: Exception) {}
                 if (peer === socket) peer = null
@@ -83,9 +83,9 @@ class BridgeService : Service() {
         val input = socket.inputStream
         while (running && socket.isConnected) {
             val line = readLineBounded(input) ?: break
-            try { acceptPosition(JSONObject(line)) } catch (e: Exception) { append("Message refusé : ${e.message ?: "JSON invalide"}") }
+            try { acceptPosition(JSONObject(line)) } catch (_: Exception) { updateConnectionState("Message refusé") }
         }
-        append("RFCOMM déconnecté")
+        updateConnectionState("RFCOMM déconnecté")
     }
 
     /** Read one UTF-8 JSONL record with a hard byte limit; BufferedReader.readLine can grow unbounded. */
@@ -130,9 +130,7 @@ class BridgeService : Service() {
         latestPositionText = "${"%.6f".format(java.util.Locale.US, lat)}, ${"%.6f".format(java.util.Locale.US, lon)} • ${"%.1f".format(java.util.Locale.US, speed * 3.6)} km/h • cap ${if (o.isNull("heading_deg")) "inconnu" else "${o.getDouble("heading_deg")}°"}"
         lastPositionWallMs = System.currentTimeMillis()
         connectionState = "Connecté au PC appairé"
-        val status = if (enabled) inject(l) else "réception seule"
-        append("Position ${if (source == "test") "FICTIVE" else "BeamNG"} reçue • seq=$seq • $status")
-        updateNotification("$status • position reçue")
+        if (enabled) inject(l)
     }
 
     private fun inject(l: Location): String {
@@ -147,10 +145,10 @@ class BridgeService : Service() {
         } catch (e: SecurityException) { "injection refusée : ${e.message}" } catch (e: Exception) { "injection impossible : ${e.message}" }
     }
 
-    private fun staleLoop() { while (running) { Thread.sleep(750); val p = lastPosition; if (p != null && System.currentTimeMillis() - p.time > 3000) { if (providerReady) removeProvider(); lastPosition = null; append("Position périmée : injection suspendue") } } }
+    private fun staleLoop() { while (running) { Thread.sleep(750); val p = lastPosition; if (p != null && System.currentTimeMillis() - p.time > 3000) { if (providerReady) removeProvider(); lastPosition = null; updateConnectionState("Position périmée"); updateNotification("Position périmée • injection suspendue") } } }
     private fun removeProvider() { try { loc.setTestProviderEnabled(provider, false); loc.removeTestProvider(provider) } catch (_: Exception) {}; providerReady = false }
 
-    override fun onDestroy() { running = false; try { peer?.close() } catch (_: Exception) {}; try { serverSocket?.close() } catch (_: Exception) {}; removeProvider(); activeInstance = null; append("Service arrêté; fournisseur fictif retiré"); super.onDestroy() }
+    override fun onDestroy() { running = false; try { peer?.close() } catch (_: Exception) {}; try { serverSocket?.close() } catch (_: Exception) {}; removeProvider(); activeInstance = null; connectionState = "Service arrêté"; super.onDestroy() }
     private fun createChannel() { if (Build.VERSION.SDK_INT >= 26) getSystemService(NotificationManager::class.java).createNotificationChannel(NotificationChannel(CHANNEL, "BeamNG GPS Bridge", NotificationManager.IMPORTANCE_LOW)) }
     private fun notification(text: String) = Notification.Builder(this, CHANNEL).setSmallIcon(android.R.drawable.ic_menu_mylocation).setContentTitle("BeamNG GPS Bridge").setContentText(text).setOngoing(true).build()
     private fun updateNotification(text: String) { getSystemService(NotificationManager::class.java).notify(7, notification(text)) }
@@ -161,7 +159,6 @@ class BridgeService : Service() {
         @Volatile private var activeInstance: BridgeService? = null
         @Volatile private var autoReconnect = true
         @Volatile private var reconnectDelayMs = 1500L
-        private val events = ArrayDeque<String>()
         @Volatile var connectionState = "Arrêté"
         @Volatile var latestPositionText = "Aucune position"
         @Volatile var lastPositionWallMs = 0L
@@ -173,13 +170,16 @@ class BridgeService : Service() {
             }
         }
         fun setReconnectDelay(milliseconds: Long) { reconnectDelayMs = milliseconds.coerceIn(1000L, 30000L) }
-        fun append(message: String) {
-            if (message.contains("Service démarré") || message.contains("Service SPP prêt")) connectionState = "En attente du connecteur Windows"
-            else if (message.contains("connecté") || message.contains("déconnecté") || message.contains("arrêté") || message.contains("Erreur")) connectionState = message
-            val sanitized = message.replace(Regex("(?i)(?:[0-9a-f]{2}:){5}[0-9a-f]{2}"), "[Bluetooth address hidden]")
-            synchronized(events) { events.addLast("${System.currentTimeMillis()}: $sanitized"); while (events.size > 80) events.removeFirst() }
+        fun updateConnectionState(event: String) {
+            connectionState = when (event) {
+                "Service démarré", "Service SPP prêt" -> "En attente du connecteur Windows"
+                "Connecteur Windows connecté" -> "Connecté au PC appairé"
+                "RFCOMM déconnecté" -> "Bluetooth déconnecté"
+                "Erreur RFCOMM" -> "Erreur de connexion Bluetooth"
+                "Message refusé" -> "Message GPS invalide"
+                "Position périmée" -> "Position périmée • injection suspendue"
+                else -> connectionState
+            }
         }
-        fun clearLog() = synchronized(events) { events.clear() }
-        fun logText() = synchronized(events) { events.joinToString("\n") }
     }
 }

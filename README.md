@@ -31,14 +31,14 @@ Le pont utilise les coordonnées WGS84 calculées par BeamNG.earth. Son mod Lua 
 
 - Position GPS du véhicule, vitesse et cap transmis en temps réel.
 - Connecteur Windows avec liste des appareils Bluetooth appairés, reconnexion et statistiques.
-- Application Android native avec réception Bluetooth, état de liaison, journal et activation explicite de l’injection.
+- Application Android native avec réception Bluetooth, état de liaison, coordonnées courantes et activation explicite de l’injection.
 - Messages JSON Lines versionnés, validés et limités en taille.
 - Mode d’essai avec coordonnées fictives pour tester la liaison indépendamment du jeu.
 - Fonctionnement local après installation : aucun compte, serveur cloud ou télémétrie.
 
 ## Télécharger l’application Android
 
-[**Télécharger l’APK de débogage**](app-debug.apk) — version 1.0.0, compilée depuis ce projet. Sur le téléphone, ouvre le fichier téléchargé pour l’installer, puis sélectionne l’application comme **application de localisation fictive** dans les options pour les développeurs Android. Cette APK est une version de test ; Android peut demander de confirmer l’installation d’une application téléchargée.
+[**Télécharger l’APK de débogage**](app-debug.apk) — version 1.0.1, compilée depuis ce projet. Sur le téléphone, ouvre le fichier téléchargé pour l’installer, puis sélectionne l’application comme **application de localisation fictive** dans les options pour les développeurs Android. Cette APK est une version de test ; Android peut demander de confirmer l’installation d’une application téléchargée.
 
 ## Installation rapide
 
@@ -111,6 +111,7 @@ py -m py_compile connector.py protocol.py bluetooth_win.py
 
 - Le pont lit actuellement `beamngEarth_core._state()`. C’est une interface interne du mod Earth ; un changement de cette API peut nécessiter une adaptation.
 - Une injection Android réussie ne garantit pas que Google Maps, Waze ou une autre application acceptera la position simulée.
+- L’application n’enregistre ni l’historique des positions ni un journal d’événements. Le connecteur conserve uniquement les mises à jour les plus récentes et abandonne celles devenues trop anciennes.
 - Android Auto sans fil/Open Headunit et le Wi-Fi Direct ne sont pas modifiés. Leur compatibilité doit être évaluée sur les appareils réels.
 - Les essais matériels Bluetooth et navigation ne sont pas remplacés par les tests logiciels.
 
